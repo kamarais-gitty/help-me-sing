@@ -55,6 +55,9 @@ function describeDrill(r: DrillScore): string {
   const missed = r.notes.length - heard.length
   const parts: string[] = []
   if (missed) parts.push(`${missed} of ${r.notes.length} notes weren’t heard clearly.`)
+  if (r.notes.some((n) => n.octaveOff !== 0)) {
+    parts.push('Some notes were heard an octave away. If you’re sure you sang them right, the microphone may have caught an overtone.')
+  }
   const timing = Math.abs(r.offset) >= 0.1 ? ` You came in ${Math.abs(r.offset).toFixed(2)} s ${r.offset > 0 ? 'late' : 'early'}, which is allowed.` : ''
   if (r.score >= 85) parts.unshift('Nicely sung.')
   else if (r.score >= 70) parts.unshift('Good. A few notes were a little off.')
@@ -134,7 +137,8 @@ export default function Practice({
     const ctx = listener.ctx
     const beatSec = beatFor(drill.noteSeconds)
     const t0 = ctx.currentTime + 0.15
-    const countStart = t0 + drill.duration + P.gapSeconds
+    // The clicks carry on the drill's own pulse: the first one lands where the next note would have.
+    const countStart = t0 + Math.ceil(drill.duration / beatSec - 1e-6) * beatSec
     const singStart = countStart + P.countInBeats * beatSec
     const listenFrom = singStart - L.timing - 0.1
     const end = singStart + drill.duration + P.tailSeconds
@@ -145,7 +149,12 @@ export default function Practice({
     const samples: Sample[] = []
     const tick = () => {
       const now = ctx.currentTime
-      const r = listener.read()
+      // Tell the listener which note is due, so a low note isn't mistaken for its overtone.
+      const due = drill.notes.find((n) => {
+        const t = now - singStart - P.detectLagSeconds
+        return t >= n.start - L.timing && t < n.start + n.seconds
+      })
+      const r = listener.read(due?.midi)
       if (now >= listenFrom) samples.push({ t: now - singStart - P.detectLagSeconds, midi: r.midi })
       if (now < countStart) {
         setPhase('playing')

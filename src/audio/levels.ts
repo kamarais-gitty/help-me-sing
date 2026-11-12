@@ -47,7 +47,7 @@ export const LEVELS: Record<LevelId, Level> = {
     drills: ['held', 'steps'],
     full: 40,
     zero: 100,
-    timing: 0.4,
+    timing: 0.5,
   },
   intermediate: {
     id: 'intermediate',
@@ -59,7 +59,7 @@ export const LEVELS: Record<LevelId, Level> = {
     drills: ['intervals', 'scaleFragment'],
     full: 25,
     zero: 75,
-    timing: 0.3,
+    timing: 0.4,
   },
   advanced: {
     id: 'advanced',
@@ -71,7 +71,7 @@ export const LEVELS: Record<LevelId, Level> = {
     drills: ['scale', 'arpeggio', 'melody'],
     full: 15,
     zero: 50,
-    timing: 0.2,
+    timing: 0.3,
   },
   expert: {
     id: 'expert',
@@ -83,7 +83,7 @@ export const LEVELS: Record<LevelId, Level> = {
     drills: ['chromaticRun', 'melody', 'arpeggio'],
     full: 10,
     zero: 40,
-    timing: 0.15,
+    timing: 0.25,
   },
 }
 

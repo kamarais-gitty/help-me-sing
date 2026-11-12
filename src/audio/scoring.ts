@@ -51,7 +51,20 @@ export function scoreNote(samples: Sample[], target: number, band: Band, glide =
 
   const onset = voiced[0].t
   const settled = voiced.filter((s) => s.t >= onset + glide)
-  const body = settled.length >= Math.max(3, voiced.length * 0.4) ? settled : voiced
+  const raw = settled.length >= Math.max(3, voiced.length * 0.4) ? settled : voiced
+
+  // A reading that jumps exactly an octave away from the rest of the note is the detector
+  // catching an overtone, not the singer. Find the octave most readings are in (the expected one
+  // wins a tie) and move the odd ones back to it.
+  const octaveOf = (m: number) => Math.round((m - target) / 12)
+  const counts = new Map<number, number>()
+  for (const s of raw) counts.set(octaveOf(s.midi), (counts.get(octaveOf(s.midi)) ?? 0) + 1)
+  let home = 0
+  for (const [k, c] of counts) if (c > (counts.get(home) ?? 0)) home = k
+  const body = raw.map((s) => {
+    const k = octaveOf(s.midi)
+    return k !== home && Math.abs(s.midi - target - k * 12) < 1 ? { t: s.t, midi: s.midi - (k - home) * 12 } : s
+  })
   const sung = median(body.map((s) => s.midi))
 
   let cents = (sung - target) * 100
@@ -110,6 +123,26 @@ export function scoreDrill(samples: Sample[], notes: DrillNote[], band: Band, ti
     }
   }
   const result = best!
+
+  // Then let each note be a little early or late on its own (up to 40% of its length,
+  // and no more than half the level's allowance), keeping whichever start fits it best.
+  const notesOut = notes.map((n, i) => {
+    const local = Math.min(n.seconds * 0.4, timing / 2)
+    let bestNote = result.notes[i]
+    let bestShift = 0
+    for (let k = -Math.round(local / step); k <= Math.round(local / step); k++) {
+      const shift = k * step
+      const [s] = scoreAt(samples, [n], band, result.offset + shift)
+      if (s.score > bestNote.score || (s.score === bestNote.score && Math.abs(shift) < Math.abs(bestShift))) {
+        bestNote = s
+        bestShift = shift
+      }
+    }
+    return bestNote
+  })
+  result.notes = notesOut
+  result.total = notesOut.reduce((sum, s) => sum + s.score, 0)
+
   return {
     notes: result.notes,
     score: Math.round(result.total / notes.length),

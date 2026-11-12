@@ -16,6 +16,12 @@ export const TUNING = {
   filterHigh: 1500,
   /** A sudden jump of exactly one or two octaves is treated as a detector slip for this long (ms). */
   octaveHoldMs: 400,
+  /**
+   * Overtone check: how much better (0 to 1) the sound must repeat over twice the period before
+   * the note an octave down is chosen. Smaller when the app expects that lower note.
+   */
+  octaveDownMargin: 0.04,
+  octaveDownHinted: 0.01,
   /** Pitches outside this range (Hz) are ignored as not a singing voice. */
   minFreq: 60,
   maxFreq: 1400,
@@ -30,9 +36,7 @@ export const TUNING = {
 /** Timing of a practice round, in seconds. */
 // Note lengths, timing tolerance and strictness per level are in levels.ts.
 export const PRACTICE = {
-  /** Pause between the played drill and the count-in. */
-  gapSeconds: 0.5,
-  /** Count-in clicks. Their speed follows the drill's note length. */
+  /** Count-in clicks. They follow straight on from the drill, at its pulse. */
   countInBeats: 4,
   /** The detector reports a pitch about this late (its listening window plus smoothing). */
   detectLagSeconds: 0.08,

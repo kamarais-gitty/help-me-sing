@@ -13,8 +13,12 @@ export type Reading = {
 
 export type Listener = {
   ctx: AudioContext
-  /** Analyse the microphone right now. Call once per animation frame. */
-  read(): Reading
+  /**
+   * Analyse the microphone right now. Call once per animation frame.
+   * `expected` (a MIDI note) is the note the singer should be on, if known; it helps decide
+   * between a low note and its overtone an octave up.
+   */
+  read(expected?: number | null): Reading
   stop(): void
 }
 
@@ -55,7 +59,34 @@ export async function startListener(): Promise<Listener> {
   let trustedAt = 0
   let slipSince = 0
 
-  function read(): Reading {
+  /** How alike the sound is to itself `lag` samples later: 1 = identical, 0 = unrelated. */
+  function selfMatch(lag: number): number {
+    let cross = 0
+    let energy = 0
+    for (let i = 0; i + lag < buf.length; i++) {
+      cross += buf[i] * buf[i + lag]
+      energy += buf[i] * buf[i] + buf[i + lag] * buf[i + lag]
+    }
+    return energy > 0 ? (2 * cross) / energy : 0
+  }
+
+  /**
+   * Low voices often carry more sound in their first overtone (an octave up) than in the note
+   * itself, and phone microphones pick up little of the lowest frequencies, so the detector can
+   * report a low note an octave too high. If the sound repeats clearly better over twice the
+   * period, the real note is the one an octave down.
+   */
+  function checkOctaveDown(freq: number, expected: number | null | undefined): number {
+    const lower = freq / 2
+    if (lower < TUNING.minFreq) return freq
+    const lag = ctx.sampleRate / freq
+    if (lag * 2 > buf.length / 2) return freq
+    const gain = selfMatch(Math.round(lag * 2)) - selfMatch(Math.round(lag))
+    const expectsLower = expected != null && Math.abs(freqToMidi(lower) - expected) < 1.5
+    return gain > (expectsLower ? TUNING.octaveDownHinted : TUNING.octaveDownMargin) ? lower : freq
+  }
+
+  function read(expected?: number | null): Reading {
     analyser.getFloatTimeDomainData(buf)
     let sum = 0
     for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i]
@@ -71,7 +102,7 @@ export async function startListener(): Promise<Listener> {
 
     // Detectors sometimes report a note exactly an octave or two away for a moment.
     // Pull those back to the octave we were just hearing unless the jump lasts.
-    let cand = clear ? freqToMidi(freq) : null
+    let cand = clear ? freqToMidi(checkOctaveDown(freq, expected)) : null
     if (cand !== null) {
       if (trusted !== null && now - trustedAt < 1000) {
         const octaves = Math.round((cand - trusted) / 12)
