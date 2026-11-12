@@ -28,15 +28,17 @@ export const TUNING = {
 } as const
 
 /** Timing of a practice round, in seconds. */
+// Note lengths, timing tolerance and strictness per level are in levels.ts.
 export const PRACTICE = {
-  /** How long the target note plays, and how long you sing it back. */
-  noteSeconds: 2,
-  /** Pause between the played note and the count-in. */
-  gapSeconds: 0.4,
-  /** Count-in clicks and the time between them. */
+  /** Pause between the played drill and the count-in. */
+  gapSeconds: 0.5,
+  /** Count-in clicks. Their speed follows the drill's note length. */
   countInBeats: 4,
-  beatSeconds: 0.6,
-  /** Singing this much before or after the slot still counts. */
-  earlySeconds: 0.2,
-  lateSeconds: 0.4,
+  /** The detector reports a pitch about this late (its listening window plus smoothing). */
+  detectLagSeconds: 0.08,
+  /** Keep listening this long after the last note, for singers who come in late. */
+  tailSeconds: 0.5,
+  /** Range test: hold a note this long, this steadily, to set it. */
+  rangeHoldSeconds: 1.2,
+  rangeSpreadSemitones: 0.6,
 } as const

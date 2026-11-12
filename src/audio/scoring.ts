@@ -1,15 +1,10 @@
+import type { DrillNote } from './drills'
+
 export type Band = {
   /** Full marks when within this many cents of the target. */
   full: number
   /** Zero marks when this many cents away or more. */
   zero: number
-}
-
-export const BANDS: Record<'beginner' | 'intermediate' | 'advanced' | 'expert', Band> = {
-  beginner: { full: 40, zero: 100 },
-  intermediate: { full: 25, zero: 75 },
-  advanced: { full: 15, zero: 50 },
-  expert: { full: 10, zero: 40 },
 }
 
 export type Sample = { t: number; midi: number | null }
@@ -23,11 +18,21 @@ export type NoteScore = {
   cents: number
   /** Whole octaves too high (+) or too low (-). 0 when sung in the right octave. */
   octaveOff: number
-  /** Share (0 to 1) of the sung note that stayed close to its own average pitch. */
+  /** Share (0 to 1) of the sung note that stayed close to its own middle pitch. */
   steadiness: number
   /** The pitch that was sung, as a fractional MIDI number. */
   sung: number
 }
+
+export type DrillScore = {
+  notes: NoteScore[]
+  /** Average of the note scores, 0 to 100. */
+  score: number
+  /** How late (+) or early (-) the singer came in overall, in seconds. */
+  offset: number
+}
+
+const NOT_HEARD: NoteScore = { heard: false, score: 0, cents: 0, octaveOff: 0, steadiness: 0, sung: 0 }
 
 function median(values: number[]): number {
   const s = [...values].sort((a, b) => a - b)
@@ -35,16 +40,18 @@ function median(values: number[]): number {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2
 }
 
-/** Scores one sung note from the pitch samples taken during its time slot. */
-export function scoreNote(samples: Sample[], target: number, band: Band): NoteScore {
+/**
+ * Scores one sung note from the pitch samples taken during its time slot.
+ * `glide` is how long (seconds) to ignore at the start while the voice slides onto the note.
+ */
+export function scoreNote(samples: Sample[], target: number, band: Band, glide = 0.1): NoteScore {
   const voiced = samples.filter((s): s is { t: number; midi: number } => s.midi !== null)
-  if (voiced.length < 15) {
-    return { heard: false, score: 0, cents: 0, octaveOff: 0, steadiness: 0, sung: 0 }
-  }
-  // Voices slide into a note, so ignore the first tenth of a second.
+  // At least a third of the slot must have a clear pitch, and never fewer than 4 readings.
+  if (voiced.length < Math.max(4, samples.length * 0.33)) return NOT_HEARD
+
   const onset = voiced[0].t
-  const settled = voiced.filter((s) => s.t >= onset + 0.1)
-  const body = settled.length >= 8 ? settled : voiced
+  const settled = voiced.filter((s) => s.t >= onset + glide)
+  const body = settled.length >= Math.max(3, voiced.length * 0.4) ? settled : voiced
   const sung = median(body.map((s) => s.midi))
 
   let cents = (sung - target) * 100
@@ -74,6 +81,39 @@ export function scoreNote(samples: Sample[], target: number, band: Band): NoteSc
     octaveOff,
     steadiness: steady,
     sung,
+  }
+}
+
+function scoreAt(samples: Sample[], notes: DrillNote[], band: Band, offset: number): NoteScore[] {
+  return notes.map((n) => {
+    const from = n.start + offset
+    const to = from + n.seconds
+    const slot = samples.filter((s) => s.t >= from && s.t < to)
+    return scoreNote(slot, n.midi, band, Math.min(0.1, n.seconds * 0.3))
+  })
+}
+
+/**
+ * Scores a whole drill. Sample times are seconds from when singing should have started.
+ * Singers often come in a little early or late, so every start within `timing` seconds is
+ * tried and the fairest one is used.
+ */
+export function scoreDrill(samples: Sample[], notes: DrillNote[], band: Band, timing: number): DrillScore {
+  let best: { notes: NoteScore[]; total: number; offset: number } | null = null
+  const step = 0.025
+  for (let k = -Math.round(timing / step); k <= Math.round(timing / step); k++) {
+    const offset = k * step
+    const scored = scoreAt(samples, notes, band, offset)
+    const total = scored.reduce((sum, s) => sum + s.score, 0)
+    if (!best || total > best.total || (total === best.total && Math.abs(offset) < Math.abs(best.offset))) {
+      best = { notes: scored, total, offset }
+    }
+  }
+  const result = best!
+  return {
+    notes: result.notes,
+    score: Math.round(result.total / notes.length),
+    offset: result.offset,
   }
 }
 
