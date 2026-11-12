@@ -4,11 +4,18 @@
  */
 export const TUNING = {
   /** Samples analysed per reading. Bigger = steadier on low notes, slower to react. */
-  bufferSize: 2048,
+  bufferSize: 4096,
   /** Quieter than this (0 to 1) counts as silence. */
-  minLevel: 0.01,
+  minLevel: 0.004,
+  /** A sound must also be this many times louder than the room's background noise. */
+  noiseGateRatio: 2,
   /** How sure the detector must be (0 to 1) before a pitch is trusted. */
-  minClarity: 0.9,
+  minClarity: 0.85,
+  /** Sound below and above these (Hz) is filtered out before listening: rumble and hiss. */
+  filterLow: 70,
+  filterHigh: 1500,
+  /** A sudden jump of exactly one or two octaves is treated as a detector slip for this long (ms). */
+  octaveHoldMs: 400,
   /** Pitches outside this range (Hz) are ignored as not a singing voice. */
   minFreq: 60,
   maxFreq: 1400,

@@ -108,7 +108,14 @@ export default function App() {
       await ctx.resume()
       const analyser = ctx.createAnalyser()
       analyser.fftSize = TUNING.bufferSize
-      ctx.createMediaStreamSource(stream).connect(analyser)
+      // Cut rumble below and hiss above the singing range so background noise matters less.
+      const highpass = ctx.createBiquadFilter()
+      highpass.type = 'highpass'
+      highpass.frequency.value = TUNING.filterLow
+      const lowpass = ctx.createBiquadFilter()
+      lowpass.type = 'lowpass'
+      lowpass.frequency.value = TUNING.filterHigh
+      ctx.createMediaStreamSource(stream).connect(highpass).connect(lowpass).connect(analyser)
 
       const detector = PitchDetector.forFloat32Array(analyser.fftSize)
       const buf = new Float32Array(analyser.fftSize)
@@ -116,6 +123,10 @@ export default function App() {
       const history: Point[] = []
       let centre = 57 // A3, until a first note is heard
       let lastUi = 0
+      let noiseFloor = 0.002 // running estimate of the room's background level
+      let trusted: number | null = null // last pitch we believed
+      let trustedAt = 0
+      let slipSince = 0
       const session: Session = { stream, ctx, raf: 0 }
       sessionRef.current = session
 
@@ -126,15 +137,38 @@ export default function App() {
         const rms = Math.sqrt(sum / buf.length)
         const [freq, clarity] = detector.findPitch(buf, ctx.sampleRate)
 
-        const loud = rms >= TUNING.minLevel
+        const now = performance.now()
+
+        // Follow the room's background level: drop quickly to quiet moments, rise very slowly.
+        noiseFloor += (rms - noiseFloor) * (rms < noiseFloor ? 0.2 : 0.0005)
+        const loud = rms >= Math.max(TUNING.minLevel, noiseFloor * TUNING.noiseGateRatio)
         const clear =
           loud && clarity >= TUNING.minClarity && freq >= TUNING.minFreq && freq <= TUNING.maxFreq
-        recent.push(clear ? freqToMidi(freq) : null)
+
+        // Detectors sometimes report a note exactly an octave or two away for a moment.
+        // Pull those back to the octave we were just hearing unless the jump lasts.
+        let cand = clear ? freqToMidi(freq) : null
+        if (cand !== null) {
+          if (trusted !== null && now - trustedAt < 1000) {
+            const octaves = Math.round((cand - trusted) / 12)
+            const isOctaveJump = octaves !== 0 && Math.abs(cand - trusted - octaves * 12) < 1
+            if (isOctaveJump) {
+              if (!slipSince) slipSince = now
+              if (now - slipSince < TUNING.octaveHoldMs) cand -= octaves * 12
+              else slipSince = 0
+            } else {
+              slipSince = 0
+            }
+          }
+          trusted = cand
+          trustedAt = now
+        }
+
+        recent.push(cand)
         if (recent.length > TUNING.smoothing) recent.shift()
         const valid = recent.filter((v): v is number => v !== null)
         const midi = valid.length >= 3 ? median(valid) : null
 
-        const now = performance.now()
         history.push({ t: now, midi })
         while (history.length && now - history[0].t > TUNING.historySeconds * 1000) history.shift()
         if (midi !== null) centre += (Math.round(midi) - centre) * 0.05
