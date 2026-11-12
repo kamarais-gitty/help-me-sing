@@ -26,3 +26,17 @@ export const TUNING = {
   /** Seconds of history shown on the pitch graph. */
   historySeconds: 6,
 } as const
+
+/** Timing of a practice round, in seconds. */
+export const PRACTICE = {
+  /** How long the target note plays, and how long you sing it back. */
+  noteSeconds: 2,
+  /** Pause between the played note and the count-in. */
+  gapSeconds: 0.4,
+  /** Count-in clicks and the time between them. */
+  countInBeats: 4,
+  beatSeconds: 0.6,
+  /** Singing this much before or after the slot still counts. */
+  earlySeconds: 0.2,
+  lateSeconds: 0.4,
+} as const

@@ -186,3 +186,178 @@ button.secondary {
   height: 100%;
   background: var(--good);
 }
+
+header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.tabs button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.tabs button.on {
+  background: var(--bg);
+  color: var(--text);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.practice {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: center;
+  background: var(--panel);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.targetNote {
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+button.step {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  font-size: 28px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.stage {
+  flex: 1;
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+}
+
+.prompt {
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.big {
+  margin: 0;
+  text-align: center;
+  font-size: 56px;
+  font-weight: 700;
+}
+
+.big.count {
+  font-size: 96px;
+  color: var(--off);
+}
+
+.big.sing {
+  color: var(--good);
+}
+
+.meter.wide .zone {
+  left: 30%;
+  width: 40%;
+}
+
+.progress {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  background: var(--good);
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.score {
+  font-size: 84px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.score.good {
+  color: var(--good);
+}
+
+.score.off {
+  color: var(--off);
+}
+
+.score.none {
+  color: var(--muted);
+}
+
+.stars {
+  font-size: 30px;
+  color: var(--off);
+  letter-spacing: 4px;
+}
+
+.stars .dim {
+  color: var(--panel);
+}
+
+.detail {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.actions .row {
+  display: flex;
+  gap: 10px;
+}
+
+.actions .row button {
+  flex: 1;
+}
