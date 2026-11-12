@@ -55,9 +55,13 @@ export function scoreNote(samples: Sample[], target: number, band: Band): NoteSc
     cents -= octaves * 1200
   }
 
-  const off = Math.abs(cents)
-  let score =
+  // Score every reading against the target and average them, so a note that wanders above and
+  // below the target loses marks even when its middle value happens to land in tune.
+  const bandScore = (off: number) =>
     off <= band.full ? 100 : off >= band.zero ? 0 : (100 * (band.zero - off)) / (band.zero - band.full)
+  const shift = octaveOff * 12
+  let score =
+    body.reduce((sum, s) => sum + bandScore(Math.abs((s.midi - shift - target) * 100)), 0) / body.length
   // The right note in the wrong octave is a different mistake from being out of tune: half marks.
   if (octaveOff !== 0) score /= 2
 

@@ -23,6 +23,9 @@ function describe(r: NoteScore): string {
     const n = Math.abs(r.octaveOff)
     return `Right note, but ${n === 1 ? 'an octave' : `${n} octaves`} too ${r.octaveOff > 0 ? 'high' : 'low'} (${tuning}). That earns half marks.`
   }
+  if (r.steadiness < 0.6 && Math.abs(r.cents) < 100) {
+    return `Your pitch wandered up and down around the note (middle: ${tuning}). Try to hold one steady pitch.`
+  }
   if (Math.abs(r.cents) <= BAND.full) {
     return r.cents === 0 ? 'Spot on.' : `In tune: just ${Math.abs(r.cents)} cents ${r.cents < 0 ? 'flat' : 'sharp'}.`
   }
