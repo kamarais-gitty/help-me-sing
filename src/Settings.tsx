@@ -1,0 +1,106 @@
+import { useState } from 'react'
+import type { Range } from './audio/drills'
+import type { Listener } from './audio/listener'
+import { midiName } from './audio/notes'
+import { playNote, setSound, SOUNDS, type SoundId } from './audio/player'
+import { loadSettings, resetProgress, saveSettings } from './storage'
+import TapCheck from './TapCheck'
+
+/** Note sound, live line, earphone timing, range, pitch check and reset. */
+export default function Settings({
+  listener,
+  range,
+  onRange,
+  onTuner,
+}: {
+  listener: Listener
+  range: Range | null
+  onRange: () => void
+  onTuner: () => void
+}) {
+  const [settings, setSettings] = useState(loadSettings)
+  const [check, setCheck] = useState<'wired' | 'bluetooth' | null>(null)
+  const [wiped, setWiped] = useState(false)
+
+  function chooseSound(id: SoundId) {
+    setSound(id)
+    setSettings(saveSettings({ sound: id }))
+    // Play three notes from the middle of the range so the sound can be heard.
+    const mid = range ? Math.round((range.low + range.high) / 2) : 60
+    const t = listener.ctx.currentTime + 0.05
+    ;[0, 4, 7].forEach((step, i) => playNote(listener.ctx, mid + step, t + i * 0.45, 0.45, { legato: true }))
+  }
+
+  function reset() {
+    if (!window.confirm('Delete all saved progress and history on this phone? Your range and settings are kept. This cannot be undone.')) return
+    resetProgress()
+    setWiped(true)
+  }
+
+  if (check) {
+    return (
+      <TapCheck
+        listener={listener}
+        kind={check}
+        onDone={() => {
+          setSettings(loadSettings())
+          setCheck(null)
+        }}
+      />
+    )
+  }
+
+  const ms = (v?: number) => (v === undefined ? 'not measured' : `${Math.round(v * 1000)} ms`)
+
+  return (
+    <section className="settings">
+      <h3>Note sound</h3>
+      <div className="levels three" role="group" aria-label="Note sound">
+        {SOUNDS.map((s) => (
+          <button key={s.id} className={s.id === settings.sound ? 'on' : ''} onClick={() => chooseSound(s.id)}>
+            {s.name}
+          </button>
+        ))}
+      </div>
+
+      <h3>While you sing</h3>
+      <button
+        className={`switch wide ${settings.live ? 'on' : ''}`}
+        onClick={() => setSettings(saveSettings({ live: !settings.live }))}
+        aria-pressed={settings.live}
+      >
+        <i />
+        Live pitch line {settings.live ? 'on' : 'off'}
+      </button>
+      <p className="detail left">Draws your pitch on the grid as you sing. You can also switch it on each practice screen.</p>
+
+      <h3>Earphone timing</h3>
+      <div className="rows">
+        <button className="rowBtn" onClick={() => setCheck('wired')}>
+          Wired earphones <span>{ms(settings.latency.wired)} ›</span>
+        </button>
+        <button className="rowBtn" onClick={() => setCheck('bluetooth')}>
+          Bluetooth earphones <span>{ms(settings.latency.bluetooth)} ›</span>
+        </button>
+      </div>
+      <p className="detail left">Used for warm-up feedback, where you sing at the same time as the piano.</p>
+
+      <h3>Your voice</h3>
+      <div className="rows">
+        <button className="rowBtn" onClick={onRange}>
+          Range test <span>{range ? `${midiName(range.low)}–${midiName(range.high)}` : 'not set'} ›</span>
+        </button>
+        <button className="rowBtn" onClick={onTuner}>
+          Pitch check <span>see the note you are singing ›</span>
+        </button>
+      </div>
+
+      <h3>Progress</h3>
+      <div className="rows">
+        <button className="rowBtn danger" onClick={reset} disabled={wiped}>
+          {wiped ? 'Progress deleted' : 'Reset progress'}
+        </button>
+      </div>
+    </section>
+  )
+}

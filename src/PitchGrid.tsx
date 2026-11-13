@@ -67,8 +67,10 @@ export default function PitchGrid({ notes, duration, cursor, trace, colours }: P
     // Target notes, each labelled with its name.
     const barH = Math.max(14, Math.min(28, rowH * 0.9))
     notes.forEach((n, i) => {
-      const x0 = x(n.start) + 1.5
-      const x1 = x(n.start + n.seconds) - 1.5
+      // Quick notes get a thinner gap so they stay visible.
+      const gap = x(n.start + n.seconds) - x(n.start) > 10 ? 1.5 : 0.5
+      const x0 = x(n.start) + gap
+      const x1 = x(n.start + n.seconds) - gap
       const active = cursor !== null && cursor >= n.start && cursor < n.start + n.seconds
       g.fillStyle = colours?.[i] ?? (active ? '#4fd1a5' : 'rgba(79,209,165,0.35)')
       g.beginPath()
@@ -77,7 +79,7 @@ export default function PitchGrid({ notes, duration, cursor, trace, colours }: P
       const label = midiName(n.midi)
       g.font = '600 11px system-ui, sans-serif'
       if (g.measureText(label).width < x1 - x0 - 6) {
-        g.fillStyle = colours || active ? '#06261c' : 'rgba(255,255,255,0.9)'
+        g.fillStyle = colours?.[i] || active ? '#06261c' : 'rgba(255,255,255,0.9)'
         g.textAlign = 'center'
         g.fillText(label, (x0 + x1) / 2, y(n.midi))
         g.textAlign = 'left'

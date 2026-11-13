@@ -22,11 +22,13 @@ export type NoteScore = {
   steadiness: number
   /** The pitch that was sung, as a fractional MIDI number. */
   sung: number
+  /** True when the note was scored as part of a run, not on its own. */
+  run?: boolean
 }
 
 export type DrillScore = {
   notes: NoteScore[]
-  /** Average of the note scores, 0 to 100. */
+  /** Average of the note scores, weighted by note length, 0 to 100. */
   score: number
   /** How late (+) or early (-) the singer came in overall, in seconds. */
   offset: number
@@ -97,14 +99,52 @@ export function scoreNote(samples: Sample[], target: number, band: Band, glide =
   }
 }
 
-function scoreAt(samples: Sample[], notes: DrillNote[], band: Band, offset: number): NoteScore[] {
+/** In a run, a reading within this many cents of a note counts as on it. */
+const RUN_CENTS = 50
+/** In a run, being on the right pitches for this share of the time earns full marks. */
+const RUN_FULL_SHARE = 0.75
+
+/**
+ * Scores one quick note of a run. Notes this short cannot be judged one by one, so the score is
+ * the share of the note's time spent on its pitch or on the run note just before or after it
+ * (being a note early or late in a run is forgiven).
+ */
+function scoreRunNote(samples: Sample[], targets: number[]): NoteScore {
+  const voiced = samples.filter((s): s is { t: number; midi: number } => s.midi !== null)
+  if (voiced.length < Math.max(2, samples.length * 0.25)) return { ...NOT_HEARD, run: true }
+  const on = (m: number) =>
+    targets.some((t) => {
+      const d = m - t
+      return Math.abs(d - 12 * Math.round(d / 12)) * 100 <= RUN_CENTS
+    })
+  const share = voiced.filter((s) => on(s.midi)).length / samples.length
+  return {
+    heard: true,
+    score: Math.min(100, Math.round((share / RUN_FULL_SHARE) * 100)),
+    cents: 0,
+    octaveOff: 0,
+    steadiness: share,
+    sung: median(voiced.map((s) => s.midi)),
+    run: true,
+  }
+}
+
+function scoreAt(samples: Sample[], notes: DrillNote[], band: Band, offset: number, all = notes): NoteScore[] {
   return notes.map((n) => {
     const from = n.start + offset
     const to = from + n.seconds
     const slot = samples.filter((s) => s.t >= from && s.t < to)
+    if (n.run) {
+      const i = all.indexOf(n)
+      const near = [all[i - 1], n, all[i + 1]].filter((x) => x).map((x) => x.midi)
+      return scoreRunNote(slot, near)
+    }
     return scoreNote(slot, n.midi, band, Math.min(0.1, n.seconds * 0.3))
   })
 }
+
+/** Total of the note scores, each counted by its length, so a held note matters more than a passing one. */
+const weighted = (scores: NoteScore[], notes: DrillNote[]) => scores.reduce((sum, s, i) => sum + s.score * notes[i].seconds, 0)
 
 /**
  * Scores a whole drill. Sample times are seconds from when singing should have started.
@@ -117,7 +157,7 @@ export function scoreDrill(samples: Sample[], notes: DrillNote[], band: Band, ti
   for (let k = -Math.round(timing / step); k <= Math.round(timing / step); k++) {
     const offset = k * step
     const scored = scoreAt(samples, notes, band, offset)
-    const total = scored.reduce((sum, s) => sum + s.score, 0)
+    const total = weighted(scored, notes)
     if (!best || total > best.total || (total === best.total && Math.abs(offset) < Math.abs(best.offset))) {
       best = { notes: scored, total, offset }
     }
@@ -127,6 +167,7 @@ export function scoreDrill(samples: Sample[], notes: DrillNote[], band: Band, ti
   // Then let each note be a little early or late on its own (up to 40% of its length,
   // and no more than half the level's allowance), keeping whichever start fits it best.
   const notesOut = notes.map((n, i) => {
+    if (n.run) return result.notes[i]
     const local = Math.min(n.seconds * 0.4, timing / 2)
     let bestNote = result.notes[i]
     let bestShift = 0
@@ -141,11 +182,11 @@ export function scoreDrill(samples: Sample[], notes: DrillNote[], band: Band, ti
     return bestNote
   })
   result.notes = notesOut
-  result.total = notesOut.reduce((sum, s) => sum + s.score, 0)
+  result.total = weighted(notesOut, notes)
 
   return {
     notes: result.notes,
-    score: Math.round(result.total / notes.length),
+    score: Math.round(result.total / notes.reduce((sum, n) => sum + n.seconds, 0)),
     offset: result.offset,
   }
 }

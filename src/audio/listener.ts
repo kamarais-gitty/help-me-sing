@@ -13,6 +13,8 @@ export type Reading = {
 
 export type Listener = {
   ctx: AudioContext
+  /** The name of the microphone in use, when the browser gives one. */
+  mic: string
   /**
    * Analyse the microphone right now. Call once per animation frame.
    * `expected` (a MIDI note) is the note the singer should be on, if known; it helps decide
@@ -34,9 +36,26 @@ export async function startListener(): Promise<Listener> {
     throw new Error('This browser cannot use the microphone here.')
   }
   // Phones clean up mic sound for calls; that distorts a sung note, so turn it off.
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-  })
+  const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+  let stream = await navigator.mediaDevices.getUserMedia({ audio })
+  // With Bluetooth earbuds connected, the phone may pick the earbuds' microphone, which also
+  // switches them into thin-sounding call mode. Ask for the phone's own microphone instead.
+  try {
+    if (/bluetooth/i.test(stream.getAudioTracks()[0]?.label ?? '')) {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const own = devices.find(
+        (d) => d.kind === 'audioinput' && d.label && !/bluetooth|default/i.test(d.label) && /speakerphone|built-?in|internal|phone/i.test(d.label),
+      )
+      if (own) {
+        const better = await navigator.mediaDevices.getUserMedia({ audio: { ...audio, deviceId: { exact: own.deviceId } } })
+        stream.getTracks().forEach((t) => t.stop())
+        stream = better
+      }
+    }
+  } catch {
+    // Keep the microphone we already have.
+  }
+  const mic = stream.getAudioTracks()[0]?.label ?? ''
   const ctx = new AudioContext()
   await ctx.resume()
 
@@ -132,5 +151,5 @@ export async function startListener(): Promise<Listener> {
     void ctx.close()
   }
 
-  return { ctx, read, stop }
+  return { ctx, mic, read, stop }
 }

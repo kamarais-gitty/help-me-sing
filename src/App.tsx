@@ -2,25 +2,44 @@ import { useEffect, useRef, useState } from 'react'
 import type { Range } from './audio/drills'
 import type { LevelId } from './audio/levels'
 import { startListener, type Listener } from './audio/listener'
-import Practice from './Practice'
+import { setSound } from './audio/player'
+import Free from './Free'
+import Home from './Home'
+import Progress from './Progress'
 import RangeTest from './RangeTest'
-import { loadLevel, loadRange, saveLevel, saveRange } from './storage'
+import Settings from './Settings'
+import { loadLevel, loadRange, loadSettings, saveLevel, saveRange } from './storage'
 import Tuner from './Tuner'
+import Warmup from './Warmup'
 import './App.css'
 
 type Status = 'idle' | 'starting' | 'listening' | 'error'
-type Tab = 'practice' | 'range' | 'tuner'
+type Tab = 'path' | 'free' | 'warmup' | 'progress' | 'more'
+/** Screens reached from the More tab. */
+type Sub = 'settings' | 'range' | 'tuner'
+
+const TABS: { id: Tab; name: string }[] = [
+  { id: 'path', name: 'Path' },
+  { id: 'free', name: 'Free' },
+  { id: 'warmup', name: 'Warm-up' },
+  { id: 'progress', name: 'Progress' },
+  { id: 'more', name: 'More' },
+]
 
 export default function App() {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
-  const [tab, setTab] = useState<Tab>('practice')
+  const [tab, setTab] = useState<Tab>('path')
+  const [sub, setSub] = useState<Sub>('settings')
   const [listener, setListener] = useState<Listener | null>(null)
   const [range, setRange] = useState<Range | null>(loadRange)
   const [level, setLevel] = useState<LevelId>(loadLevel)
   const listenerRef = useRef<Listener | null>(null)
 
-  useEffect(() => () => listenerRef.current?.stop(), [])
+  useEffect(() => {
+    setSound(loadSettings().sound)
+    return () => listenerRef.current?.stop()
+  }, [])
 
   async function start() {
     setStatus('starting')
@@ -30,8 +49,6 @@ export default function App() {
       listenerRef.current = l
       setListener(l)
       setStatus('listening')
-      // First visit: find the singer's range before any drills.
-      if (!range) setTab('range')
     } catch (e) {
       const name = e instanceof DOMException ? e.name : ''
       setError(
@@ -50,7 +67,8 @@ export default function App() {
   function rangeDone(r: Range) {
     saveRange(r)
     setRange(r)
-    setTab('practice')
+    setSub('settings')
+    setTab('path')
   }
 
   function changeLevel(l: LevelId) {
@@ -58,21 +76,26 @@ export default function App() {
     setLevel(l)
   }
 
+  function go(t: Tab) {
+    setTab(t)
+    setSub('settings')
+  }
+
+  // First visit: find the singer's range before anything else.
+  const needRange = listener && !range
+  const rangeKey = range ? `${range.low}-${range.high}` : 'none'
+
   return (
     <main className="app">
       <header>
         <h1>Help Me Sing</h1>
-        {listener && (
+        {listener && range && (
           <nav className="tabs">
-            <button className={tab === 'practice' ? 'on' : ''} onClick={() => setTab('practice')} disabled={!range}>
-              Practice
-            </button>
-            <button className={tab === 'range' ? 'on' : ''} onClick={() => setTab('range')}>
-              Range
-            </button>
-            <button className={tab === 'tuner' ? 'on' : ''} onClick={() => setTab('tuner')}>
-              Pitch check
-            </button>
+            {TABS.map((t) => (
+              <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={() => go(t.id)}>
+                {t.name}
+              </button>
+            ))}
           </nav>
         )}
       </header>
@@ -93,18 +116,26 @@ export default function App() {
         </section>
       )}
 
-      {listener && tab === 'practice' && range && (
-        <Practice
-          key={`${range.low}-${range.high}`}
-          listener={listener}
-          range={range}
-          level={level}
-          onLevel={changeLevel}
-          onRedoRange={() => setTab('range')}
-        />
+      {needRange && <RangeTest listener={listener} initial={null} onDone={rangeDone} />}
+
+      {listener && range && (
+        <>
+          {tab === 'path' && <Home key={rangeKey} listener={listener} range={range} level={level} onLevel={changeLevel} />}
+          {tab === 'free' && <Free key={rangeKey} listener={listener} range={range} level={level} onLevel={changeLevel} />}
+          {tab === 'warmup' && <Warmup key={rangeKey} listener={listener} range={range} />}
+          {tab === 'progress' && <Progress />}
+          {tab === 'more' && sub === 'settings' && (
+            <Settings listener={listener} range={range} onRange={() => setSub('range')} onTuner={() => setSub('tuner')} />
+          )}
+          {tab === 'more' && sub !== 'settings' && (
+            <button className="link back" onClick={() => setSub('settings')}>
+              ‹ Back to settings
+            </button>
+          )}
+          {tab === 'more' && sub === 'range' && <RangeTest listener={listener} initial={range} onDone={rangeDone} />}
+          {tab === 'more' && sub === 'tuner' && <Tuner listener={listener} />}
+        </>
       )}
-      {listener && tab === 'range' && <RangeTest listener={listener} initial={range} onDone={rangeDone} />}
-      {listener && tab === 'tuner' && <Tuner listener={listener} />}
     </main>
   )
 }
