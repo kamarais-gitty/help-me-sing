@@ -64,6 +64,8 @@ export type Settings = {
   live: boolean
   /** When only beat 4 is left after the notes: 'short' clicks it and goes straight in; 'extended' adds a full bar (4, 1, 2, 3, 4). */
   countIn: 'short' | 'extended'
+  /** Click on every beat while the notes are played, not only in the count-in. */
+  clickNotes: boolean
   /** Last speed used at each level (1 = normal). */
   speeds: Partial<Record<LevelId, number>>
   listening: Listening
@@ -71,7 +73,7 @@ export type Settings = {
   latency: { wired?: number; bluetooth?: number }
 }
 
-const DEFAULT_SETTINGS: Settings = { sound: 'piano', live: true, countIn: 'short', speeds: {}, listening: 'speaker', latency: {} }
+const DEFAULT_SETTINGS: Settings = { sound: 'piano', live: true, countIn: 'short', clickNotes: false, speeds: {}, listening: 'speaker', latency: {} }
 
 export function loadSettings(): Settings {
   const s = getJson<Partial<Settings>>(SETTINGS_KEY, {})

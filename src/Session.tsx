@@ -286,7 +286,8 @@ export default function Session({
     const used = Math.ceil(d.duration / beatSec - 1e-6)
     let clicks = (P.barBeats - (used % P.barBeats)) % P.barBeats
     // A lone click on beat 4 is the singer's choice: straight in, or a full extra bar first.
-    if (clicks < (loadSettings().countIn === 'extended' ? 2 : P.minClicks)) clicks += P.barBeats
+    const prefs = loadSettings()
+    if (clicks < (prefs.countIn === 'extended' ? 2 : P.minClicks)) clicks += P.barBeats
     const countStart = t0 + used * beatSec
     const singStart = countStart + clicks * beatSec
     const beatAt = (t: number) => (Math.max(0, Math.floor((t - t0) / beatSec + 1e-6)) % P.barBeats) + 1
@@ -295,6 +296,8 @@ export default function Session({
 
     playDrill(t0)
     const dest = out()
+    // Optionally the click also runs under the played notes, so the pulse is heard from beat 1.
+    if (prefs.clickNotes) for (let i = 0; i < used; i++) playClick(ctx, t0 + i * beatSec, i % P.barBeats === 0, dest)
     for (let i = 0; i < clicks; i++) playClick(ctx, countStart + i * beatSec, (used + i) % P.barBeats === 0, dest)
 
     const samples: Sample[] = []

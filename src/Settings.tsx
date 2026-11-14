@@ -95,6 +95,16 @@ export default function Settings({
         Other drills are the same either way.
       </p>
 
+      <button
+        className={`switch wide ${settings.clickNotes ? 'on' : ''}`}
+        onClick={() => setSettings(saveSettings({ clickNotes: !settings.clickNotes }))}
+        aria-pressed={settings.clickNotes}
+      >
+        <i />
+        Click while the notes play {settings.clickNotes ? 'on' : 'off'}
+      </button>
+      <p className="detail left">Clicks on every beat from the first note, not only in the count-in. There is still no click while you sing.</p>
+
       <h3>Earphone timing</h3>
       <div className="rows">
         <button className="rowBtn" onClick={() => setCheck('wired')}>
