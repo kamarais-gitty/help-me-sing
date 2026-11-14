@@ -6,7 +6,7 @@ export const SOUNDS: { id: SoundId; name: string }[] = [
   { id: 'piano', name: 'Piano' },
   { id: 'keys', name: 'Simple piano' },
   { id: 'soft', name: 'Soft tone' },
-  { id: 'ooh', name: 'Voice “ooh”' },
+  { id: 'ooh', name: 'Synth voice' },
 ]
 
 let current: SoundId = 'piano'

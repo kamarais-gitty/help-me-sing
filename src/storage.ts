@@ -73,7 +73,7 @@ export type Settings = {
   latency: { wired?: number; bluetooth?: number }
 }
 
-const DEFAULT_SETTINGS: Settings = { sound: 'piano', live: true, countIn: 'short', clickNotes: false, speeds: {}, listening: 'speaker', latency: {} }
+const DEFAULT_SETTINGS: Settings = { sound: 'piano', live: true, countIn: 'short', clickNotes: true, speeds: {}, listening: 'speaker', latency: {} }
 
 export function loadSettings(): Settings {
   const s = getJson<Partial<Settings>>(SETTINGS_KEY, {})

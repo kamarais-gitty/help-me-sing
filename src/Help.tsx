@@ -1,6 +1,6 @@
 import { APP_FULL_NAME } from './config'
 
-/** Plain-language guide, reached from the More tab. */
+/** Plain-language guide, reached from the Settings tab. */
 export default function Help() {
   return (
     <section className="help">
@@ -38,12 +38,12 @@ export default function Help() {
         <li>Use a quiet room. The app warns you when it is noisy.</li>
         <li>Hold the phone 20 to 30 cm from your mouth.</li>
         <li>Sing at a normal, steady volume. Very quiet, breathy notes are hard to hear.</li>
-        <li>If low notes show up an octave high, redo the range test under More.</li>
+        <li>If low notes show up an octave high, redo the range test under Settings.</li>
       </ul>
 
       <h3>Use it like an app</h3>
       <p>
-        Under More, choose “Install on this phone”, or open Chrome’s ⋮ menu and choose “Add to Home screen”. After the first visit it
+        Under Settings, choose “Install on this phone”, or open Chrome’s ⋮ menu and choose “Add to Home screen”. After the first visit it
         also works with no internet.
       </p>
 

@@ -18,7 +18,7 @@ import './App.css'
 
 type Status = 'idle' | 'starting' | 'listening' | 'error'
 type Tab = 'path' | 'free' | 'warmup' | 'progress' | 'more'
-/** Screens reached from the More tab. */
+/** Screens reached from the Settings tab. */
 type Sub = 'settings' | 'range' | 'tuner' | 'help'
 
 const TABS: { id: Tab; name: string }[] = [
@@ -26,7 +26,7 @@ const TABS: { id: Tab; name: string }[] = [
   { id: 'free', name: 'Free' },
   { id: 'warmup', name: 'Warm-up' },
   { id: 'progress', name: 'Progress' },
-  { id: 'more', name: 'More' },
+  { id: 'more', name: 'Settings' },
 ]
 
 export default function App() {
