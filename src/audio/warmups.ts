@@ -23,6 +23,8 @@ export type Exercise = {
   staccato?: boolean
   /** A free slide with no fixed notes; never judged. */
   siren?: boolean
+  /** Sung on a trill or roll, where pitch cannot be read reliably; never judged. */
+  unjudged?: boolean
 }
 
 const UP_DOWN_5 = [0, 2, 4, 5, 7, 5, 4, 2, 0]
@@ -40,6 +42,48 @@ export const EXERCISES: Record<string, Exercise> = {
     beats: lastLong(9),
     beat: 0.55,
     margin: 4,
+  },
+  liptrill: {
+    id: 'liptrill',
+    name: 'Lip trill',
+    sing: 'brrrr',
+    how: 'Lips loose and bubbling, steady air. Five notes up and back down.',
+    steps: UP_DOWN_5,
+    beats: lastLong(9),
+    beat: 0.5,
+    margin: 3,
+    unjudged: true,
+  },
+  tongueroll: {
+    id: 'tongueroll',
+    name: 'Tongue roll',
+    sing: 'rrrrr',
+    how: 'Roll the tip of your tongue and glide up the chord and back. If you can’t roll an R, use the lip trill.',
+    steps: ARPEGGIO,
+    beats: lastLong(7),
+    beat: 0.55,
+    margin: 2,
+    unjudged: true,
+  },
+  vowels: {
+    id: 'vowels',
+    name: 'Vowels on one note',
+    sing: 'ee – eh – ah – oh – oo',
+    how: 'One vowel per note, all on the same pitch. Keep the jaw loose and the tone even as the vowel changes.',
+    steps: [0, 0, 0, 0, 0],
+    beats: [2, 2, 2, 2, 3],
+    beat: 0.5,
+    margin: 4,
+  },
+  meemay: {
+    id: 'meemay',
+    name: 'Mee-may-mah',
+    sing: 'mee – may – mah – moh – moo',
+    how: 'One syllable per note, coming down five notes. Let the “m” buzz on your lips.',
+    steps: [7, 5, 4, 2, 0],
+    beats: [1.5, 1.5, 1.5, 1.5, 3],
+    beat: 0.5,
+    margin: 2,
   },
   siren: {
     id: 'siren',
@@ -118,9 +162,13 @@ export const EXERCISES: Record<string, Exercise> = {
 export type RoutineId = 'quick' | 'standard' | 'full'
 
 export const ROUTINES: Record<RoutineId, { name: string; minutes: number; exercises: string[] }> = {
-  quick: { name: 'Quick', minutes: 3, exercises: ['hum', 'five', 'arpeggio'] },
-  standard: { name: 'Standard', minutes: 5, exercises: ['hum', 'siren', 'five', 'arpeggio', 'descending'] },
-  full: { name: 'Full', minutes: 10, exercises: ['hum', 'siren', 'five', 'arpeggio', 'descending', 'octave', 'staccato', 'nine'] },
+  quick: { name: 'Quick', minutes: 3, exercises: ['hum', 'liptrill', 'five', 'arpeggio'] },
+  standard: { name: 'Standard', minutes: 5, exercises: ['hum', 'liptrill', 'siren', 'vowels', 'five', 'arpeggio', 'descending'] },
+  full: {
+    name: 'Full',
+    minutes: 10,
+    exercises: ['hum', 'liptrill', 'tongueroll', 'siren', 'vowels', 'five', 'meemay', 'arpeggio', 'descending', 'octave', 'staccato', 'nine'],
+  },
 }
 
 /** Lowest and highest starting note an exercise may use in this range, and where it begins. */

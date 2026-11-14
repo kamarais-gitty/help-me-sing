@@ -201,6 +201,17 @@ export default function Session({
     setPhase('ready')
   }
 
+  /** Stops the sound and the round at once, keeping the same drill. */
+  function stop() {
+    cancelAnimationFrame(raf.current)
+    bus.current?.kill()
+    bus.current = null
+    setResult(null)
+    setTrace(undefined)
+    setCursor(null)
+    setPhase('ready')
+  }
+
   function changeSpeed(step: number) {
     const i = SPEEDS.findIndex((s) => Math.abs(s - speed) < 0.001)
     const next = SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, i + step))]
@@ -483,8 +494,12 @@ export default function Session({
               {lastRound ? 'Finish' : 'Next drill'}
             </button>
           </div>
+        ) : busy ? (
+          <button className="primary stop" onClick={stop}>
+            Stop
+          </button>
         ) : (
-          <button className="primary" onClick={run} disabled={busy}>
+          <button className="primary" onClick={run}>
             Play and sing
           </button>
         )}

@@ -55,6 +55,11 @@ button.primary {
   font-size: 18px;
 }
 
+button.primary.stop {
+  background: var(--bad);
+  color: #2b0d08;
+}
+
 button.primary:disabled {
   opacity: 0.6;
 }

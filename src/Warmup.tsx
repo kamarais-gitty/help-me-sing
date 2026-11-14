@@ -171,7 +171,7 @@ export default function Warmup({ listener, range }: { listener: Listener; range:
     const now = ctx.currentTime
     const ex = live.current.exercises[c.exIdx]
 
-    if (live.current.feedback && !ex.siren) {
+    if (live.current.feedback && !ex.siren && !ex.unjudged) {
       // Where the singer is in the pattern, allowing for the sound reaching their ears late.
       const t = now - c.start - live.current.delay - P.detectLagSeconds
       const due = c.rep.notes.find((n) => t >= n.start - 0.1 && t < n.start + n.seconds)
@@ -189,7 +189,7 @@ export default function Warmup({ listener, range }: { listener: Listener; range:
 
     if (!e.next && now >= c.start + c.rep.duration - 0.15) e.next = planNext()
     if (e.next && now >= (e.next === 'end' ? c.start + c.rep.duration : e.next.start)) {
-      if (live.current.feedback && !ex.siren) c.rep.notes.forEach((_, i) => e.marks[i] === undefined && judge(ex, i))
+      if (live.current.feedback && !ex.siren && !ex.unjudged) c.rep.notes.forEach((_, i) => e.marks[i] === undefined && judge(ex, i))
       const next = e.next
       e.next = null
       if (next === 'end') return finish()
@@ -379,6 +379,8 @@ export default function Warmup({ listener, range }: { listener: Listener; range:
               ? 'Listen for the chord, then sing with the piano.'
               : turning
                 ? 'Turning back down from the next repeat.'
+                : ex.unjudged && feedback
+                  ? 'Trills and rolls aren’t judged. Just follow the piano.'
                 : `Starting on ${view ? midiName(view.root) : ''}, moving ${eng.current.dir > 0 && (view?.root ?? 0) < b.max ? 'up' : 'down'} a semitone each time.`}
       </p>
 
