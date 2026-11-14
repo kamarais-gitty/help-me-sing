@@ -9,6 +9,8 @@ export type Reading = {
   level: number
   /** True when there is sound above the room's background noise. */
   loud: boolean
+  /** The room's background level, on the same raw scale as TUNING.minLevel. */
+  noise: number
 }
 
 export type Listener = {
@@ -143,7 +145,7 @@ export async function startListener(): Promise<Listener> {
     const valid = recent.filter((v): v is number => v !== null)
     const midi = valid.length >= 3 ? median(valid) : null
 
-    return { midi, level: Math.min(1, rms * 5), loud }
+    return { midi, level: Math.min(1, rms * 5), loud, noise: noiseFloor }
   }
 
   function stop() {

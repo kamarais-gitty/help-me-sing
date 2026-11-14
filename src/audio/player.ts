@@ -1,9 +1,10 @@
 import { midiToFreq } from './notes'
 
-export type SoundId = 'piano' | 'soft' | 'ooh'
+export type SoundId = 'piano' | 'keys' | 'soft' | 'ooh'
 
 export const SOUNDS: { id: SoundId; name: string }[] = [
   { id: 'piano', name: 'Piano' },
+  { id: 'keys', name: 'Simple piano' },
   { id: 'soft', name: 'Soft tone' },
   { id: 'ooh', name: 'Voice “ooh”' },
 ]
@@ -44,7 +45,49 @@ export function makeBus(ctx: AudioContext): Bus {
   }
 }
 
-// The piano-like tone is built from a few harmonics with a struck-then-fading shape.
+// Recorded piano: one recording every three keys, each retuned to the notes around it.
+// Recordings: Salamander Grand Piano by Alexander Holm, licensed CC BY 3.0.
+const SAMPLE_NAMES = ['A', 'C', 'Ds', 'Fs']
+const SAMPLE_STEPS = [9, 0, 3, 6]
+type PianoSample = { midi: number; buffer: AudioBuffer; offset: number; peak: number }
+let samples: PianoSample[] = []
+let loading: Promise<boolean> | null = null
+
+/** Downloads and prepares the piano recordings. Until they are ready the simple piano is used. */
+export function loadPiano(ctx: AudioContext): Promise<boolean> {
+  if (loading) return loading
+  const wanted: { midi: number; file: string }[] = []
+  for (let midi = 33; midi <= 84; midi += 3) {
+    const i = SAMPLE_STEPS.indexOf(midi % 12)
+    wanted.push({ midi, file: `${SAMPLE_NAMES[i]}${Math.floor(midi / 12) - 1}.mp3` })
+  }
+  loading = Promise.all(
+    wanted.map(async ({ midi, file }) => {
+      const res = await fetch(`${import.meta.env.BASE_URL}piano/${file}`)
+      if (!res.ok) throw new Error(file)
+      const buffer = await ctx.decodeAudioData(await res.arrayBuffer())
+      // Find where the note really starts, so every note lands on the beat.
+      const data = buffer.getChannelData(0)
+      let peak = 0
+      for (let k = 0; k < data.length; k++) peak = Math.max(peak, Math.abs(data[k]))
+      let first = 0
+      while (first < data.length && Math.abs(data[first]) < peak * 0.02) first++
+      return { midi, buffer, offset: Math.max(0, first / buffer.sampleRate - 0.003), peak: peak || 1 }
+    }),
+  ).then(
+    (all) => {
+      samples = all
+      return true
+    },
+    () => {
+      loading = null
+      return false
+    },
+  )
+  return loading
+}
+
+// The simple piano tone is built from a few harmonics with a struck-then-fading shape.
 const PIANO = [1, 0.5, 0.28, 0.14, 0.07]
 const SOFT = [1, 0.12]
 
@@ -59,7 +102,24 @@ export function playNote(ctx: AudioContext, midi: number, when: number, seconds:
   g.setValueAtTime(0.0001, when)
   let end = when + seconds
 
-  if (sound === 'piano') {
+  if (sound === 'piano' && samples.length) {
+    const s = samples.reduce((best, x) => (Math.abs(x.midi - midi) < Math.abs(best.midi - midi) ? x : best))
+    const src = ctx.createBufferSource()
+    src.buffer = s.buffer
+    src.playbackRate.value = 2 ** ((midi - s.midi) / 12)
+    const level = (volume * 0.9) / s.peak
+    if (legato) end += 0.06
+    g.setValueAtTime(level, when)
+    g.setValueAtTime(level, end)
+    // Like lifting a finger off the key: a quick fade, not a cut.
+    g.setTargetAtTime(0, end, 0.05)
+    src.connect(out)
+    src.start(when, s.offset)
+    src.stop(end + 0.4)
+    return
+  }
+
+  if (sound === 'piano' || sound === 'keys') {
     g.linearRampToValueAtTime(volume, when + 0.012)
     if (legato) {
       // Stay fuller for longer and overlap the next note slightly.

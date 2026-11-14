@@ -6,8 +6,8 @@ import { midiName } from './audio/notes'
 import { makeBus, playClick, playNote, type Bus } from './audio/player'
 import { scoreDrill, stars, type DrillScore, type NoteScore, type Sample } from './audio/scoring'
 import { sessionTip, type ScoredRound } from './audio/tips'
-import { PRACTICE as P } from './audio/tuning'
-import PitchGrid from './PitchGrid'
+import { PRACTICE as P, TUNING } from './audio/tuning'
+import PitchGrid, { type NoteFx } from './PitchGrid'
 import { loadSettings, saveSettings } from './storage'
 
 type Phase = 'ready' | 'hearing' | 'playing' | 'countin' | 'singing' | 'result' | 'summary'
@@ -150,6 +150,9 @@ export default function Session({
   const [done, setDone] = useState<{ score: number; speed: number }[]>([])
   const [verdict, setVerdict] = useState<SessionVerdict | null>(null)
   const [tip, setTip] = useState('')
+  const [fx, setFx] = useState<NoteFx | undefined>(undefined)
+  const [noisy, setNoisy] = useState(false)
+  const [faint, setFaint] = useState(false)
   const raf = useRef(0)
   const bus = useRef<Bus | null>(null)
   const scored = useRef<ScoredRound[]>([])
@@ -174,6 +177,13 @@ export default function Session({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [specKey])
 
+  // While waiting, keep an ear on the room so a noisy one can be flagged before singing.
+  useEffect(() => {
+    if (phase !== 'ready') return
+    const id = setInterval(() => setNoisy(listener.read().noise >= TUNING.noisyLevel), 300)
+    return () => clearInterval(id)
+  }, [phase, listener])
+
   const top = maxSpeed(drill)
   const speed = Math.min(wanted, top)
   const timed = useMemo(() => atSpeed(drill, speed), [drill, speed])
@@ -197,6 +207,7 @@ export default function Session({
     setDrill(makeDrill(spec, range))
     setResult(null)
     setTrace(undefined)
+    setFx(undefined)
     setCursor(null)
     setPhase('ready')
   }
@@ -208,6 +219,7 @@ export default function Session({
     bus.current = null
     setResult(null)
     setTrace(undefined)
+    setFx(undefined)
     setCursor(null)
     setPhase('ready')
   }
@@ -222,6 +234,7 @@ export default function Session({
     if (phase === 'result') {
       setResult(null)
       setTrace(undefined)
+    setFx(undefined)
       setPhase('ready')
     }
   }
@@ -262,6 +275,7 @@ export default function Session({
     cancelAnimationFrame(raf.current)
     setResult(null)
     setTrace(undefined)
+    setFx(undefined)
     const ctx = listener.ctx
     const d = timed
     const usedSpeed = speed
@@ -284,8 +298,18 @@ export default function Session({
     for (let i = 0; i < clicks; i++) playClick(ctx, countStart + i * beatSec, (used + i) % P.barBeats === 0, dest)
 
     const samples: Sample[] = []
+    // Live glow: how long the singer has stayed on each note, and whether they nailed it.
+    const band = Math.max(L.full, P.glowCents)
+    const hold = d.notes.map(() => ({ heard: 0, ok: 0, streak: 0 }))
+    const glow = d.notes.map(() => 0)
+    const nailed = d.notes.map(() => false)
+    let last = ctx.currentTime
+    let frames = 0
+    let loudFrames = 0
     const tick = () => {
       const now = ctx.currentTime
+      const dt = now - last
+      last = now
       // Tell the listener which note is due, so a low note isn't mistaken for its overtone.
       const due = d.notes.find((n) => {
         const t = now - singStart - P.detectLagSeconds
@@ -304,10 +328,36 @@ export default function Session({
       } else if (now < end) {
         setPhase('singing')
         setCursor(now - singStart)
-        if (showLive) setTrace(samples)
+        frames++
+        if (r.loud) loudFrames++
+        const t = now - singStart - P.detectLagSeconds
+        const i = d.notes.findIndex((n) => t >= n.start && t < n.start + n.seconds)
+        if (i >= 0 && r.midi !== null) {
+          const n = d.notes[i]
+          const h = hold[i]
+          h.heard += dt
+          if (Math.abs(r.midi - n.midi) * 100 <= band) {
+            h.ok += dt
+            h.streak += dt
+          } else {
+            h.streak = 0
+          }
+          glow[i] = Math.min(1, h.streak / Math.min(0.5, n.seconds * 0.5))
+          nailed[i] = h.heard >= n.seconds * 0.5 && h.ok >= h.heard * P.nailedShare
+        } else if (i >= 0) {
+          hold[i].streak = 0
+          glow[i] *= 0.9
+        }
+        if (showLive) {
+          setTrace(samples)
+          setFx({ glow: [...glow], nailed: [...nailed] })
+        }
       } else {
         const s = scoreDrill(samples, d.notes, L, timing)
         resultSpeed.current = usedSpeed
+        setNoisy(r.noise >= TUNING.noisyLevel)
+        setFaint(loudFrames < frames * 0.1)
+        setFx(undefined)
         setResult(s)
         setTrace(samples.map((x) => ({ t: x.t - s.offset, midi: x.midi })))
         setCursor(null)
@@ -448,9 +498,10 @@ export default function Session({
         </button>
       </div>
 
-      <PitchGrid notes={timed.notes} duration={timed.duration} cursor={cursor} trace={trace} colours={colours} />
+      <PitchGrid notes={timed.notes} duration={timed.duration} cursor={cursor} trace={trace} colours={colours} fx={fx} />
 
       <div className="stage compact">
+        {phase === 'ready' && noisy && <p className="warn">It is noisy here. The microphone may miss or mishear notes; a quieter spot scores more fairly.</p>}
         {phase === 'ready' && (
           <p className="prompt">
             The app plays these notes while counting in fours, clicks to finish the bar, then you sing them back from the next “1”.
@@ -476,6 +527,13 @@ export default function Session({
               </div>
             </div>
             <p className="prompt">{held ? describeHeld(result.notes[0], L.full) : describeDrill(result)}</p>
+            {result.notes.filter((n) => !n.heard).length * 2 >= result.notes.length && (noisy || faint) && (
+              <p className="warn">
+                {noisy
+                  ? 'It is noisy here, and the background sound is drowning out your voice. Try a quieter spot, or hold the phone closer.'
+                  : 'I could barely hear you. Sing louder, or hold the phone closer to your mouth.'}
+              </p>
+            )}
             {held && result.notes[0].heard && (
               <p className="detail">Held steady {Math.round(result.notes[0].steadiness * 100)}% of the time</p>
             )}

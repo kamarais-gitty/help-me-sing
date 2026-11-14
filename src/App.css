@@ -1041,3 +1041,158 @@ button.tapPad small {
   font-size: 16px;
   font-weight: 500;
 }
+
+/* Phase 7: name, look, help, warnings */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.brand img {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.brand span,
+.hero h1 span {
+  color: var(--sun);
+}
+
+.hero {
+  margin-top: 6vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.hero img {
+  width: 128px;
+  height: 128px;
+  border-radius: 32px;
+  box-shadow: 0 12px 40px rgba(183, 155, 255, 0.35);
+}
+
+.hero h1 {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.hero h1 span {
+  display: block;
+  font-size: 44px;
+  line-height: 1.1;
+}
+
+.intro {
+  margin-top: 0;
+  text-align: center;
+}
+
+button {
+  border-radius: 16px;
+  transition: transform 80ms, filter 80ms;
+}
+
+button:not(:disabled):active {
+  transform: scale(0.97);
+  filter: brightness(1.1);
+}
+
+button.primary {
+  background: linear-gradient(135deg, #4fd1a5, #7dffd0);
+  box-shadow: 0 6px 20px rgba(79, 209, 165, 0.25);
+}
+
+button.primary.stop {
+  background: var(--bad);
+  box-shadow: none;
+}
+
+.tabs button.on {
+  background: var(--accent);
+  color: #1c1538;
+}
+
+button.link {
+  color: var(--accent);
+}
+
+h3 {
+  color: var(--accent);
+}
+
+.stages .num {
+  color: var(--accent);
+}
+
+.tip {
+  border-left: 4px solid var(--sun);
+}
+
+.warn {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(242, 184, 75, 0.14);
+  color: var(--off);
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+a.rowBtn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 12px;
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+a.rowBtn span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.help {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  line-height: 1.5;
+  font-size: 15px;
+}
+
+.help h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.help h3 {
+  margin: 8px 0 -4px;
+}
+
+.help p,
+.help ul {
+  margin: 0;
+}
+
+.help ul {
+  padding-left: 20px;
+}
+
+.help li {
+  margin: 4px 0;
+}

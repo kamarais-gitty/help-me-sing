@@ -12,11 +12,18 @@ type Props = {
   trace?: Sample[]
   /** A colour per note (after scoring); notes are neutral without it. */
   colours?: string[]
+  /** Live feedback while singing: how steadily each note is being held (0 to 1), and which were nailed. */
+  fx?: NoteFx
 }
+
+export type NoteFx = { glow: number[]; nailed: boolean[] }
+
+const BURST_SECONDS = 0.6
+const SPARKS = ['#ffd166', '#ff8fd0', '#b79bff', '#7dffd0']
 
 const MIN_ROWS = 9
 
-export default function PitchGrid({ notes, duration, cursor, trace, colours }: Props) {
+export default function PitchGrid({ notes, duration, cursor, trace, colours, fx }: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -72,19 +79,57 @@ export default function PitchGrid({ notes, duration, cursor, trace, colours }: P
       const x0 = x(n.start) + gap
       const x1 = x(n.start + n.seconds) - gap
       const active = cursor !== null && cursor >= n.start && cursor < n.start + n.seconds
+      // A note held steadily in tune glows brighter; one already sung keeps some of its glow.
+      const glow = colours ? 0 : (fx?.glow[i] ?? 0) * (active ? 1 : 0.6)
       g.fillStyle = colours?.[i] ?? (active ? '#4fd1a5' : 'rgba(79,209,165,0.35)')
+      if (glow > 0) {
+        g.fillStyle = `rgb(${79 + 70 * glow}, ${209 + 46 * glow}, ${165 + 55 * glow})`
+        g.shadowColor = '#7dffd0'
+        g.shadowBlur = 22 * glow
+      }
       g.beginPath()
       g.roundRect(x0, y(n.midi) - barH / 2, x1 - x0, barH, 5)
       g.fill()
+      g.shadowBlur = 0
       const label = midiName(n.midi)
       g.font = '600 11px system-ui, sans-serif'
       if (g.measureText(label).width < x1 - x0 - 6) {
-        g.fillStyle = colours?.[i] || active ? '#06261c' : 'rgba(255,255,255,0.9)'
+        g.fillStyle = colours?.[i] || active || glow > 0.3 ? '#06261c' : 'rgba(255,255,255,0.9)'
         g.textAlign = 'center'
         g.fillText(label, (x0 + x1) / 2, y(n.midi))
         g.textAlign = 'left'
       }
     })
+
+    // A burst of colour as a nailed note ends.
+    if (fx && !colours && cursor !== null) {
+      notes.forEach((n, i) => {
+        const p = (cursor - n.start - n.seconds) / BURST_SECONDS
+        if (!fx.nailed[i] || p < 0 || p >= 1) return
+        const x0 = x(n.start)
+        const x1 = x(n.start + n.seconds)
+        const cx = (x0 + x1) / 2
+        const cy = y(n.midi)
+        const ease = 1 - (1 - p) ** 3
+        const grow = 16 * ease
+        g.globalAlpha = 1 - p
+        g.strokeStyle = '#ffd166'
+        g.lineWidth = 3 * (1 - p) + 1
+        g.beginPath()
+        g.roundRect(x0 - grow, cy - barH / 2 - grow, x1 - x0 + grow * 2, barH + grow * 2, 5 + grow)
+        g.stroke()
+        const reach = (x1 - x0) / 2 + 34
+        for (let k = 0; k < 10; k++) {
+          const a = (k / 10) * Math.PI * 2 + i
+          const d = 0.35 + 0.65 * ease
+          g.fillStyle = SPARKS[k % SPARKS.length]
+          g.beginPath()
+          g.arc(cx + Math.cos(a) * reach * d, cy + Math.sin(a) * (barH / 2 + 30) * d, 3.5 * (1 - p) + 1, 0, Math.PI * 2)
+          g.fill()
+        }
+        g.globalAlpha = 1
+      })
+    }
 
     // What was sung.
     if (trace?.length) {
@@ -115,7 +160,7 @@ export default function PitchGrid({ notes, duration, cursor, trace, colours }: P
       g.lineTo(x(cursor), h - pad / 2)
       g.stroke()
     }
-  }, [notes, duration, cursor, trace, colours])
+  }, [notes, duration, cursor, trace, colours, fx])
 
   return <canvas ref={ref} className="grid" aria-label={`Notes: ${notes.map((n) => midiName(n.midi)).join(', ')}`} />
 }

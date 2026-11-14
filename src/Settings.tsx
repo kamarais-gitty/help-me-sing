@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Range } from './audio/drills'
 import type { Listener } from './audio/listener'
 import { midiName } from './audio/notes'
 import { playNote, setSound, SOUNDS, type SoundId } from './audio/player'
+import { FEEDBACK_URL } from './config'
+import { canInstall, install, isInstalled, onInstallChange } from './install'
 import { loadSettings, resetProgress, saveSettings } from './storage'
 import TapCheck from './TapCheck'
 
@@ -12,12 +14,16 @@ export default function Settings({
   range,
   onRange,
   onTuner,
+  onHelp,
 }: {
   listener: Listener
   range: Range | null
   onRange: () => void
   onTuner: () => void
+  onHelp: () => void
 }) {
+  const [, redraw] = useState(0)
+  useEffect(() => onInstallChange(() => redraw((n) => n + 1)), [])
   const [settings, setSettings] = useState(loadSettings)
   const [check, setCheck] = useState<'wired' | 'bluetooth' | null>(null)
   const [wiped, setWiped] = useState(false)
@@ -55,7 +61,7 @@ export default function Settings({
   return (
     <section className="settings">
       <h3>Note sound</h3>
-      <div className="levels three" role="group" aria-label="Note sound">
+      <div className="levels two" role="group" aria-label="Note sound">
         {SOUNDS.map((s) => (
           <button key={s.id} className={s.id === settings.sound ? 'on' : ''} onClick={() => chooseSound(s.id)}>
             {s.name}
@@ -109,6 +115,30 @@ export default function Settings({
           Pitch check <span>see the note you are singing ›</span>
         </button>
       </div>
+
+      <h3>The app</h3>
+      <div className="rows">
+        <button className="rowBtn" onClick={onHelp}>
+          How it works <span>›</span>
+        </button>
+        {canInstall() && (
+          <button className="rowBtn" onClick={() => void install()}>
+            Install on this phone <span>adds an icon to your home screen ›</span>
+          </button>
+        )}
+        {FEEDBACK_URL && (
+          <a className="rowBtn" href={FEEDBACK_URL} target="_blank" rel="noreferrer">
+            Send feedback <span>a short form ›</span>
+          </a>
+        )}
+      </div>
+      {!canInstall() && (
+        <p className="detail left">
+          {isInstalled()
+            ? 'Installed. It also works with no internet.'
+            : 'To install, open Chrome’s ⋮ menu and choose “Add to Home screen”. After the first visit the app also works with no internet.'}
+        </p>
+      )}
 
       <h3>Progress</h3>
       <div className="rows">

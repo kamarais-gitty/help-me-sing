@@ -25,6 +25,8 @@ export const TUNING = {
   /** Pitches outside this range (Hz) are ignored as not a singing voice. */
   minFreq: 60,
   maxFreq: 1400,
+  /** A background level at or above this is called "noisy". A guess, to be tuned on the phone. */
+  noisyLevel: 0.012,
   /** Readings smoothed together (median) to hide brief jumps. */
   smoothing: 5,
   /** Within this many cents counts as "in tune" on the tuner. */
@@ -40,6 +42,10 @@ export const PRACTICE = {
   barBeats: 4,
   /** Fewest count-in clicks; with fewer left in the bar, a whole extra bar is clicked. */
   minClicks: 1,
+  /** Live glow: a note glows while the singer is within this many cents (or the level's band, if wider). */
+  glowCents: 20,
+  /** Live burst: the share of a note's sung time that must be inside that band to count as nailed. */
+  nailedShare: 0.8,
   /** The detector reports a pitch about this late (its listening window plus smoothing). */
   detectLagSeconds: 0.08,
   /** Keep listening this long after the last note, for singers who come in late. */

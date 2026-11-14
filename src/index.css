@@ -1,8 +1,10 @@
 :root {
-  --bg: #0f1418;
-  --panel: #182028;
-  --text: #f1f5f4;
-  --muted: #9aa8a8;
+  --bg: #15122a;
+  --panel: #221d40;
+  --text: #f6f3ff;
+  --muted: #a9a2c9;
+  --accent: #b79bff;
+  --sun: #ffd166;
   --good: #4fd1a5;
   --off: #f2b84b;
   --bad: #f07a6a;
