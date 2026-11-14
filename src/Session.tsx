@@ -271,7 +271,8 @@ export default function Session({
     // clicks finish the bar, so singing starts on beat 1. When the notes fill the bar exactly, a whole bar is clicked.
     const used = Math.ceil(d.duration / beatSec - 1e-6)
     let clicks = (P.barBeats - (used % P.barBeats)) % P.barBeats
-    if (clicks < P.minClicks) clicks += P.barBeats
+    // A lone click on beat 4 is the singer's choice: straight in, or a full extra bar first.
+    if (clicks < (loadSettings().countIn === 'extended' ? 2 : P.minClicks)) clicks += P.barBeats
     const countStart = t0 + used * beatSec
     const singStart = countStart + clicks * beatSec
     const beatAt = (t: number) => (Math.max(0, Math.floor((t - t0) / beatSec + 1e-6)) % P.barBeats) + 1

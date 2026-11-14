@@ -74,6 +74,21 @@ export default function Settings({
       </button>
       <p className="detail left">Draws your pitch on the grid as you sing. You can also switch it on each practice screen.</p>
 
+      <h3>Count-in</h3>
+      <div className="levels two" role="group" aria-label="Count-in">
+        {(['short', 'extended'] as const).map((id) => (
+          <button key={id} className={id === settings.countIn ? 'on' : ''} onClick={() => setSettings(saveSettings({ countIn: id }))}>
+            {id === 'short' ? 'Short' : 'Extended'}
+          </button>
+        ))}
+      </div>
+      <p className="detail left">
+        {settings.countIn === 'short'
+          ? 'When the notes end with one beat left in the bar, you get a single click on 4 and sing straight away.'
+          : 'When the notes end with one beat left in the bar, you get that click and a full bar more: 4, 1, 2, 3, 4.'}{' '}
+        Other drills are the same either way.
+      </p>
+
       <h3>Earphone timing</h3>
       <div className="rows">
         <button className="rowBtn" onClick={() => setCheck('wired')}>
