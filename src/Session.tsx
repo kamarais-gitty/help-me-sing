@@ -268,7 +268,7 @@ export default function Session({
     const beatSec = beatFor(d.noteSeconds)
     const t0 = ctx.currentTime + 0.15
     // Everything is counted in bars of four. The beats run silently under the played notes, then the
-    // clicks finish the bar, so singing starts on beat 1. Fewer than two clicks left adds a whole bar.
+    // clicks finish the bar, so singing starts on beat 1. When the notes fill the bar exactly, a whole bar is clicked.
     const used = Math.ceil(d.duration / beatSec - 1e-6)
     let clicks = (P.barBeats - (used % P.barBeats)) % P.barBeats
     if (clicks < P.minClicks) clicks += P.barBeats
