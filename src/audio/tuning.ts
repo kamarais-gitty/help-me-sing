@@ -36,8 +36,10 @@ export const TUNING = {
 /** Timing of a practice round, in seconds. */
 // Note lengths, timing tolerance and strictness per level are in levels.ts.
 export const PRACTICE = {
-  /** Count-in clicks. They follow straight on from the drill, at its pulse. */
-  countInBeats: 4,
+  /** Beats in a bar. The count runs under the played notes and the clicks finish the bar. */
+  barBeats: 4,
+  /** Fewest count-in clicks; with fewer left in the bar, a whole extra bar is clicked. */
+  minClicks: 2,
   /** The detector reports a pitch about this late (its listening window plus smoothing). */
   detectLagSeconds: 0.08,
   /** Keep listening this long after the last note, for singers who come in late. */

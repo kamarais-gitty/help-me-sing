@@ -288,6 +288,12 @@ button.step {
   color: var(--off);
 }
 
+.quietCount {
+  margin-left: 8px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .big.sing {
   color: var(--good);
 }

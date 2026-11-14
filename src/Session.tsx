@@ -267,15 +267,20 @@ export default function Session({
     const usedSpeed = speed
     const beatSec = beatFor(d.noteSeconds)
     const t0 = ctx.currentTime + 0.15
-    // The clicks carry on the drill's own pulse: the first one lands where the next note would have.
-    const countStart = t0 + Math.ceil(d.duration / beatSec - 1e-6) * beatSec
-    const singStart = countStart + P.countInBeats * beatSec
+    // Everything is counted in bars of four. The beats run silently under the played notes, then the
+    // clicks finish the bar, so singing starts on beat 1. Fewer than two clicks left adds a whole bar.
+    const used = Math.ceil(d.duration / beatSec - 1e-6)
+    let clicks = (P.barBeats - (used % P.barBeats)) % P.barBeats
+    if (clicks < P.minClicks) clicks += P.barBeats
+    const countStart = t0 + used * beatSec
+    const singStart = countStart + clicks * beatSec
+    const beatAt = (t: number) => (Math.max(0, Math.floor((t - t0) / beatSec + 1e-6)) % P.barBeats) + 1
     const listenFrom = singStart - timing - 0.1
     const end = singStart + d.duration + P.tailSeconds
 
     playDrill(t0)
     const dest = out()
-    for (let i = 0; i < P.countInBeats; i++) playClick(ctx, countStart + i * beatSec, i === 0, dest)
+    for (let i = 0; i < clicks; i++) playClick(ctx, countStart + i * beatSec, (used + i) % P.barBeats === 0, dest)
 
     const samples: Sample[] = []
     const tick = () => {
@@ -290,10 +295,11 @@ export default function Session({
       if (now < countStart) {
         setPhase('playing')
         setCursor(now >= t0 ? now - t0 : null)
+        setBeat(beatAt(now))
       } else if (now < singStart) {
         setPhase('countin')
         setCursor(null)
-        setBeat(Math.min(P.countInBeats, Math.floor((now - countStart) / beatSec) + 1))
+        setBeat(beatAt(now))
       } else if (now < end) {
         setPhase('singing')
         setCursor(now - singStart)
@@ -446,10 +452,15 @@ export default function Session({
       <div className="stage compact">
         {phase === 'ready' && (
           <p className="prompt">
-            The app plays these notes, clicks four times, then you sing them back while the line moves across.
+            The app plays these notes while counting in fours, clicks to finish the bar, then you sing them back from the next “1”.
           </p>
         )}
-        {(phase === 'hearing' || phase === 'playing') && <p className="big">Listen…</p>}
+        {phase === 'hearing' && <p className="big">Listen…</p>}
+        {phase === 'playing' && (
+          <p className="big">
+            Listen… <span className="quietCount">{beat}</span>
+          </p>
+        )}
         {phase === 'countin' && <p className="big count">{beat}</p>}
         {phase === 'singing' && <p className="big sing">Sing!</p>}
         {phase === 'result' && result && (
