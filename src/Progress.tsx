@@ -1,7 +1,8 @@
 import { LEVEL_ORDER, LEVELS, PATH, STAGES } from './audio/levels'
 import { levelUnlocked, loadHistory, loadProgress, streak } from './storage'
 
-const KIND = { stage: 'Stage', test: 'Level test', free: 'Free practice', warmup: 'Warm-up' } as const
+const KIND = { stage: 'Stage', test: 'Level test', free: 'Free practice', song: 'Song',
+  warmup: 'Warm-up' } as const
 
 /** Scores per level, best scores at each speed, practice streak and the recent trend. */
 export default function Progress() {

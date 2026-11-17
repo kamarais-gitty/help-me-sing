@@ -1196,3 +1196,86 @@ a.rowBtn span {
 .help li {
   margin: 4px 0;
 }
+
+/* Songs */
+
+.songs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.songs h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.partRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.partRow > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.partRow b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.partRow small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.partRow button {
+  width: auto;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.field input {
+  font: inherit;
+  font-size: 16px;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+button.rowBtn span.good {
+  color: var(--good);
+}
+
+button.rowBtn span.weak {
+  color: var(--off);
+}
+
+.tabs {
+  gap: 2px;
+}
+
+.tabs button {
+  padding: 10px 0;
+  font-size: 12.5px;
+  white-space: nowrap;
+}

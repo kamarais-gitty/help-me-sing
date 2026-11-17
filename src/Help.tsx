@@ -24,6 +24,13 @@ export default function Help() {
         level test opens the next level, and you can take it at any time. <b>Free</b> lets you pick any drill and setting; nothing is locked.
       </p>
 
+      <h3>Songs</h3>
+      <p>
+        Under <b>Songs</b>, add the tune of a song as a MIDI file and pick the part you sing. The app moves it into your range and cuts it
+        into phrases. Sing the whole song a phrase at a time, or tap one phrase to repeat it. You can sing the words; hold the vowels and
+        the app follows them. A prepared song can be sent to someone else who uses the app.
+      </p>
+
       <h3>Speed</h3>
       <p>Slow a drill down with − to learn it. Scores below 100% speed are saved but do not unlock anything; faster than 100% earns a badge.</p>
 

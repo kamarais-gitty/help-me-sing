@@ -1,6 +1,7 @@
 import type { Range } from './audio/drills'
 import { LEVEL_ORDER, PATH, STAGES, type LevelId } from './audio/levels'
 import type { SoundId } from './audio/player'
+import type { Song } from './audio/songs'
 
 // Saved on this phone only. Browser storage can be blocked or cleared, so every access is guarded.
 
@@ -9,6 +10,7 @@ const LEVEL_KEY = 'hms.level'
 const SETTINGS_KEY = 'hms.settings'
 const PROGRESS_KEY = 'hms.progress'
 const HISTORY_KEY = 'hms.history'
+const SONGS_KEY = 'hms.songs'
 
 function get(key: string): string | null {
   try {
@@ -18,11 +20,13 @@ function get(key: string): string | null {
   }
 }
 
-function set(key: string, value: string) {
+function set(key: string, value: string): boolean {
   try {
     localStorage.setItem(key, value)
+    return true
   } catch {
     // Not saved; the app still works for this visit.
+    return false
   }
 }
 
@@ -135,7 +139,7 @@ export function stageUnlocked(p: Progress, level: LevelId, stage: number): boole
 export type HistoryItem = {
   /** When it was finished (milliseconds since 1970). */
   t: number
-  kind: 'stage' | 'test' | 'free' | 'warmup'
+  kind: 'stage' | 'test' | 'free' | 'warmup' | 'song'
   level?: LevelId
   stage?: number
   score?: number
@@ -182,6 +186,18 @@ export function recordSession(item: Omit<HistoryItem, 't'>): SessionOutcome {
   }
   set(PROGRESS_KEY, JSON.stringify(p))
   return { passed: counted && score >= PATH.pass, counted, newlyUnlocked }
+}
+
+// Songs the singer brought in. Kept apart from progress, so "reset progress" leaves them alone.
+
+export function loadSongs(): Song[] {
+  const list = getJson<Song[]>(SONGS_KEY, [])
+  return Array.isArray(list) ? list.filter((x) => x && Array.isArray(x.notes) && Array.isArray(x.cuts) && x.notes.length > 0) : []
+}
+
+/** Saves the list. False when the phone refused, for example because its storage for this app is full. */
+export function saveSongs(songs: Song[]): boolean {
+  return set(SONGS_KEY, JSON.stringify(songs))
 }
 
 export function resetProgress() {

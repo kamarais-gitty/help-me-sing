@@ -11,19 +11,21 @@ import Home from './Home'
 import Progress from './Progress'
 import RangeTest from './RangeTest'
 import Settings from './Settings'
+import Songs from './Songs'
 import { loadLevel, loadRange, loadSettings, saveLevel, saveRange } from './storage'
 import Tuner from './Tuner'
 import Warmup from './Warmup'
 import './App.css'
 
 type Status = 'idle' | 'starting' | 'listening' | 'error'
-type Tab = 'path' | 'free' | 'warmup' | 'progress' | 'more'
+type Tab = 'path' | 'free' | 'songs' | 'warmup' | 'progress' | 'more'
 /** Screens reached from the Settings tab. */
 type Sub = 'settings' | 'range' | 'tuner' | 'help'
 
 const TABS: { id: Tab; name: string }[] = [
   { id: 'path', name: 'Path' },
   { id: 'free', name: 'Free' },
+  { id: 'songs', name: 'Songs' },
   { id: 'warmup', name: 'Warm-up' },
   { id: 'progress', name: 'Progress' },
   { id: 'more', name: 'Settings' },
@@ -139,6 +141,7 @@ export default function App() {
         <>
           {tab === 'path' && <Home key={rangeKey} listener={listener} range={range} level={level} onLevel={changeLevel} />}
           {tab === 'free' && <Free key={rangeKey} listener={listener} range={range} level={level} onLevel={changeLevel} />}
+          {tab === 'songs' && <Songs key={rangeKey} listener={listener} range={range} level={level} />}
           {tab === 'warmup' && <Warmup key={rangeKey} listener={listener} range={range} />}
           {tab === 'progress' && <Progress />}
           {tab === 'more' && sub === 'settings' && (

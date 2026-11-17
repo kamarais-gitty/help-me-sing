@@ -21,6 +21,17 @@ export type Drill = {
   noteSeconds: number
   /** Total length in seconds. */
   duration: number
+  // The rest is only set for phrases of a song.
+  /** Length of one beat in seconds, when it should not be worked out from the note length. */
+  beatSeconds?: number
+  /** Beats in a bar, when not four. */
+  barBeats?: number
+  /** Seconds of silence before the first note, when the phrase starts part-way through a bar. */
+  lead?: number
+  /** Shown in place of the drill type's name. */
+  label?: string
+  /** Play the notes smoothly joined. */
+  legato?: boolean
 }
 
 /** Speeds the tempo control offers, as a share of normal speed. */
@@ -272,6 +283,8 @@ export function atSpeed(drill: Drill, speed: number): Drill {
     notes: drill.notes.map((n) => ({ ...n, start: n.start * k, seconds: n.seconds * k })),
     noteSeconds: drill.noteSeconds * k,
     duration: drill.duration * k,
+    ...(drill.beatSeconds !== undefined && { beatSeconds: drill.beatSeconds * k }),
+    ...(drill.lead !== undefined && { lead: drill.lead * k }),
   }
 }
 

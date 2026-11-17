@@ -119,6 +119,8 @@ export default function Session({
   rounds,
   allowRetry = true,
   liveLocked = false,
+  drills,
+  onScore,
   onRound,
   onFinish,
   onExit,
@@ -134,12 +136,17 @@ export default function Session({
   allowRetry?: boolean
   /** Live line forced off (the Expert level test). */
   liveLocked?: boolean
+  /** Phrases of a song, sung in this order in place of made-up drills. With `rounds` null they repeat. */
+  drills?: Drill[]
+  /** Called as soon as a round is scored, with its position in the session. */
+  onScore?: (index: number, score: number, speed: number) => void
   onRound?: (score: number, speed: number) => void
   onFinish?: (result: SessionResult) => SessionVerdict
   onExit?: () => void
 }) {
   const L = level
-  const [drill, setDrill] = useState<Drill>(() => makeDrill(spec, range))
+  const pickDrill = (index: number) => (drills?.length ? drills[index % drills.length] : makeDrill(spec, range))
+  const [drill, setDrill] = useState<Drill>(() => pickDrill(0))
   const [phase, setPhase] = useState<Phase>('ready')
   const [beat, setBeat] = useState(0)
   const [cursor, setCursor] = useState<number | null>(null)
@@ -189,7 +196,8 @@ export default function Session({
   const timed = useMemo(() => atSpeed(drill, speed), [drill, speed])
   const timing = Math.max(0.2, Math.min(0.6, L.timing / speed))
   const showLive = live && !liveLocked
-  const phrase = PHRASE_TYPES.includes(drill.type)
+  const phrase = drill.legato ?? PHRASE_TYPES.includes(drill.type)
+  const song = !!drills?.length
 
   const busy = phase === 'hearing' || phase === 'playing' || phase === 'countin' || phase === 'singing'
   const colours = useMemo(() => result?.notes.map(colourFor), [result])
@@ -200,11 +208,11 @@ export default function Session({
     return bus.current.node
   }
 
-  function newDrill() {
+  function newDrill(index = done.length) {
     cancelAnimationFrame(raf.current)
     bus.current?.kill()
     bus.current = null
-    setDrill(makeDrill(spec, range))
+    setDrill(pickDrill(index))
     setResult(null)
     setTrace(undefined)
     setFx(undefined)
@@ -256,10 +264,12 @@ export default function Session({
     const ctx = listener.ctx
     const t0 = ctx.currentTime + 0.1
     const back = phase
-    playDrill(t0)
+    // Skip the silence before a phrase that starts part-way through a bar.
+    const skip = timed.lead ?? 0
+    playDrill(t0 - skip)
     setPhase('hearing')
     const tick = () => {
-      const t = ctx.currentTime - t0
+      const t = ctx.currentTime - t0 + skip
       if (t > timed.duration) {
         setCursor(null)
         setPhase(back === 'result' ? 'result' : 'ready')
@@ -279,26 +289,31 @@ export default function Session({
     const ctx = listener.ctx
     const d = timed
     const usedSpeed = speed
-    const beatSec = beatFor(d.noteSeconds)
+    const beatSec = d.beatSeconds ?? beatFor(d.noteSeconds)
+    const bar = d.barBeats ?? P.barBeats
+    const roundIndex = done.length
     const t0 = ctx.currentTime + 0.15
-    // Everything is counted in bars of four. The beats run silently under the played notes, then the
+    // Everything is counted in bars (of four, unless a song says otherwise). The beats run silently under the played notes, then the
     // clicks finish the bar, so singing starts on beat 1. When the notes fill the bar exactly, a whole bar is clicked.
     const used = Math.ceil(d.duration / beatSec - 1e-6)
-    let clicks = (P.barBeats - (used % P.barBeats)) % P.barBeats
+    let clicks = (bar - (used % bar)) % bar
+    // A song phrase that starts part-way through a bar is clicked up to its first note.
+    const leadClicks = Math.floor((d.lead ?? 0) / beatSec + 1e-6)
     // A lone click on beat 4 is the singer's choice: straight in, or a full extra bar first.
     const prefs = loadSettings()
-    if (clicks < (prefs.countIn === 'extended' ? 2 : P.minClicks)) clicks += P.barBeats
+    if (clicks + leadClicks < (prefs.countIn === 'extended' ? 2 : P.minClicks)) clicks += bar
     const countStart = t0 + used * beatSec
     const singStart = countStart + clicks * beatSec
-    const beatAt = (t: number) => (Math.max(0, Math.floor((t - t0) / beatSec + 1e-6)) % P.barBeats) + 1
+    const singFrom = singStart + leadClicks * beatSec
+    const beatAt = (t: number) => (Math.max(0, Math.floor((t - t0) / beatSec + 1e-6)) % bar) + 1
     const listenFrom = singStart - timing - 0.1
     const end = singStart + d.duration + P.tailSeconds
 
     playDrill(t0)
     const dest = out()
     // Optionally the click also runs under the played notes, so the pulse is heard from beat 1.
-    if (prefs.clickNotes) for (let i = 0; i < used; i++) playClick(ctx, t0 + i * beatSec, i % P.barBeats === 0, dest)
-    for (let i = 0; i < clicks; i++) playClick(ctx, countStart + i * beatSec, (used + i) % P.barBeats === 0, dest)
+    if (prefs.clickNotes) for (let i = 0; i < used; i++) playClick(ctx, t0 + i * beatSec, i % bar === 0, dest)
+    for (let i = 0; i < clicks + leadClicks; i++) playClick(ctx, countStart + i * beatSec, (used + i) % bar === 0, dest)
 
     const samples: Sample[] = []
     // Live glow: how long the singer has stayed on each note, and whether they nailed it.
@@ -324,9 +339,9 @@ export default function Session({
         setPhase('playing')
         setCursor(now >= t0 ? now - t0 : null)
         setBeat(beatAt(now))
-      } else if (now < singStart) {
+      } else if (now < singFrom) {
         setPhase('countin')
-        setCursor(null)
+        setCursor(now >= singStart ? now - singStart : null)
         setBeat(beatAt(now))
       } else if (now < end) {
         setPhase('singing')
@@ -358,6 +373,7 @@ export default function Session({
       } else {
         const s = scoreDrill(samples, d.notes, L, timing)
         resultSpeed.current = usedSpeed
+        onScore?.(roundIndex, s.score, usedSpeed)
         setNoisy(r.noise >= TUNING.noisyLevel)
         setFaint(loudFrames < frames * 0.1)
         setFx(undefined)
@@ -391,14 +407,14 @@ export default function Session({
       setPhase('summary')
       return
     }
-    newDrill()
+    newDrill(all.length)
   }
 
   function again() {
     scored.current = []
     setDone([])
     setVerdict(null)
-    newDrill()
+    newDrill(0)
   }
 
   const head = (
@@ -476,7 +492,7 @@ export default function Session({
 
       <div className="drillInfo">
         <span>
-          <strong>{DRILL_NAMES[drill.type]}</strong>
+          <strong>{drill.label ?? DRILL_NAMES[drill.type]}</strong>
           {drill.key && ` · ${drill.key}`} · {timed.notes.length} {timed.notes.length === 1 ? 'note' : 'notes'}
           {even && ` · ${secs} each`}
         </span>
@@ -507,7 +523,9 @@ export default function Session({
         {phase === 'ready' && noisy && <p className="warn">It is noisy here. The microphone may miss or mishear notes; a quieter spot scores more fairly.</p>}
         {phase === 'ready' && (
           <p className="prompt">
-            The app plays these notes while counting in fours, clicks to finish the bar, then you sing them back from the next “1”.
+            {song
+              ? 'The app plays this phrase while counting the beat and clicks you in, then you sing it back. Sing the words or any sound.'
+              : 'The app plays these notes while counting in fours, clicks to finish the bar, then you sing them back from the next “1”.'}
           </p>
         )}
         {phase === 'hearing' && <p className="big">Listen…</p>}
@@ -563,8 +581,8 @@ export default function Session({
                 Try again
               </button>
             )}
-            <button className="primary" onClick={next}>
-              {lastRound ? 'Finish' : 'Next drill'}
+            <button className="primary" onClick={song && rounds === null ? onExit : next}>
+              {lastRound ? 'Finish' : song ? (rounds === null ? 'Done' : 'Next phrase') : 'Next drill'}
             </button>
           </div>
         ) : busy ? (
@@ -580,7 +598,7 @@ export default function Session({
           <button className="secondary" onClick={hear} disabled={busy}>
             Hear it
           </button>
-          {phase !== 'result' && rounds === null && (
+          {phase !== 'result' && rounds === null && !song && (
             <button className="secondary" onClick={() => newDrill()} disabled={busy}>
               Different drill
             </button>
